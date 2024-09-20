@@ -13,7 +13,7 @@ const AppContext = ({ children }) => {
 };
 
 AppContext.propTypes = {
-    children: PropTypes.any.isRequired,
+    children: PropTypes.element.isRequired,
 };
 
 export default AppContext;

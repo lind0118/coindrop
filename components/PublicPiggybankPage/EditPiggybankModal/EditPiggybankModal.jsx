@@ -27,127 +27,31 @@ import {
     Text,
     useTheme,
 } from "@chakra-ui/core";
-import { useForm, useFieldArray, Controller } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import { piggybankPathRegex } from '../../../src/settings';
 import { PublicPiggybankData } from '../PublicPiggybankDataContext';
 import { publicPiggybankThemeColorOptions as themeColorOptions } from '../../theme';
-import { addressFieldPrefix, addressIsPreferredSuffix, getPaymentMethodIdFromPaymentMethodIsPreferredField } from '../PublicPiggybankPage';
-
-function convertPiggybankDataToAddressData(piggybankData) {
-    const obj = Object.entries(piggybankData)
-    .reduce((result, [field, value]) => {
-        if (field.startsWith(addressFieldPrefix)) {
-            if (field.endsWith(addressIsPreferredSuffix)) {
-                const paymentMethodId = getPaymentMethodIdFromPaymentMethodIsPreferredField(field);
-                return {
-                    ...result,
-                    [paymentMethodId]: {
-                        ...result[paymentMethodId],
-                        isPreferred: value,
-                    },
-                };
-            }
-            const paymentMethodId = field.substr(addressFieldPrefix.length);
-            return {
-                ...result,
-                [paymentMethodId]: {
-                    ...result[paymentMethodId],
-                    address: value,
-                },
-            };
-        }
-        return result;
-    }, {});
-    const arr = Object.entries(obj)
-    .map(([paymentMethodId, paymentMethodData]) => ({
-        id: paymentMethodId,
-        ...paymentMethodData,
-    }));
-    return arr;
-}
 
 const EditPiggybankModal = (props) => {
     const { isOpen, onClose } = props;
     const { colors } = useTheme();
     const themeColorOptionsWithHexValues = themeColorOptions.map(name => ([name, colors[name]['500']]));
-    const { query: { piggybankName: initialPiggybankId } } = useRouter();
+    const { query: { piggybankName } } = useRouter();
     const data = useContext(PublicPiggybankData);
-    const initialAddressDataFieldArray = convertPiggybankDataToAddressData(data);
-
-    console.log('initialAddressDataFieldArray', initialAddressDataFieldArray)
-    const { register, handleSubmit, setValue, getValues, watch, control, errors } = useForm({
-        defaultValues: {
-            piggybankId: initialPiggybankId,
-            accentColor: data.accent_color ?? 'orange',
-            website: data.website ?? '',
-            name: data.name ?? '',
-            verb: data.verb ?? 'pay',
-            addressData: initialAddressDataFieldArray,
-        },
-    });
-    const { fields, append, remove } = useFieldArray({
-        control,
-        name: "addressData",
-    });
+    const { register, handleSubmit, setValue, getValues, watch, errors } = useForm();
     watch();
-    const onSubmit = (formData) => console.log('submitting data', formData);
+    const onSubmit = (data) => null;
     const handleAccentColorChange = (e) => {
         setValue("accentColor", e.target.dataset.colorname);
     };
     useEffect(() => {
         register("accentColor");
     }, [register]);
-    const { name, accentColor, verb, website, addressData } = getValues(["name", "accentColor", "verb", "website", "addressData"]);
-    console.log('addressData', addressData);
+    useEffect(() => {
+        setValue("accentColor", data.accentColor ?? 'orange'); // does this do anything?
+    }, []);
+    const { name, accentColor, verb, website } = getValues(["name", "accentColor", "verb", "website"]);
     const formControlTopMargin = 2;
-    const PaymentMethodsInputs = () => {
-        console.log('FIELDS', fields);
-        return (
-            <>
-                {fields.map((item, index) => {
-                    console.log('ITEM', item)
-                    return (
-                        <>
-                            <Select name={`addressData[test].address`} />
-                        </>
-                    );
-                })}
-                {/* {Object.entries(addressData).map(([paymentMethodId, paymentMethodData]) => (
-                    <Box>
-                        <Flex>
-                            <Text>{paymentMethodId}</Text>
-                            <Text>{paymentMethodData.address}</Text>
-                            <Text>{paymentMethodData.isPreferred ? 'is preferred' : 'not preferred'}</Text>
-                        </Flex>
-                    </Box>
-                ))} */}
-                {/* 
-                    <li key={paymentMethodId}>
-                        <input
-                            name={`paymentMethods[${paymentMethodId}].paymentMethod`}
-                            ref={register()}
-                            defaultValue={value} // make sure to set up defaultValue
-                        />
-                        <Controller
-                            as={<input />}
-                            name={`paymentMethods[${paymentMethodId}].value`}
-                            control={control}
-                            defaultValue={value} // make sure to set up defaultValue
-                        />
-                        <input
-                            name={`paymentMethods[${paymentMethodId}].isPreferred`}
-                            ref={register()}
-                            defaultValue={isPreferred} // make sure to set up defaultValue
-                        />
-                        <Button onClick={() => remove(paymentMethodId)}>Delete</Button>
-                    </li>
-                */}
-                <Flex>
-                    <Button onClick={() => append({ address: "testAddress", isPreferred: true })}><Icon name="add" /></Button>
-                </Flex>
-            </>
-        );
-    };
     return (
         <Modal
             isOpen={isOpen}
@@ -161,13 +65,13 @@ const EditPiggybankModal = (props) => {
             <ModalBody>
                 <form onSubmit={handleSubmit(onSubmit)}>
                     <FormControl isRequired>
-                        <FormLabel htmlFor="input-piggybankId">URL</FormLabel>
+                        <FormLabel htmlFor="input-piggybankName">URL</FormLabel>
                         <InputGroup>
                             <InputLeftAddon>
                                 coindrop.to/
                             </InputLeftAddon>
                             <Input
-                                id="input-piggybankId"
+                                id="input-piggybankName"
                                 maxLength="32"
                                 roundedLeft="0"
                                 onChange={(e) => {
@@ -175,7 +79,8 @@ const EditPiggybankModal = (props) => {
                                 }}
                                 // isInvalid={}
                                 ref={register}
-                                name="piggybankId"
+                                name="piggybankName"
+                                defaultValue={piggybankName}
                             />
                             <InputRightElement>
                                 <Icon name="check" color="green.500" />
@@ -198,7 +103,6 @@ const EditPiggybankModal = (props) => {
                         <Flex wrap="wrap" justify="center">
                             {themeColorOptionsWithHexValues.map(([colorName, hexCode]) => (
                                 <Box
-                                    key={colorName}
                                     as="button"
                                     bg={hexCode}
                                     w="36px"
@@ -268,16 +172,6 @@ const EditPiggybankModal = (props) => {
                             type="url"
                         />
                     </FormControl>
-                    <FormControl
-                        mt={formControlTopMargin}
-                    >
-                        <FormLabel
-                            htmlFor="input-paymentmethods"
-                        >
-                            Payment Methods
-                        </FormLabel>
-                        <PaymentMethodsInputs />
-                    </FormControl>
                     {name && accentColor && verb && (
                         <>
                         <FormLabel
@@ -285,7 +179,7 @@ const EditPiggybankModal = (props) => {
                         >
                             Preview
                         </FormLabel>
-                        <FormHelperText textAlign="center">
+                        <FormHelperText id="email-helper-text" textAlign="center">
                             {'"Choose a payment method to '}
                             {verb ?? 'pay'}
                             {' '}
@@ -324,7 +218,7 @@ const EditPiggybankModal = (props) => {
                     Cancel
                 </Button>
                 <Button
-                    variantColor="green"
+                    variantColor={accentColor}
                     mx={1}
                     onClick={onClose}
                 >
