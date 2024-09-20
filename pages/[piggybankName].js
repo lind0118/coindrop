@@ -5,14 +5,14 @@ import { db } from '../utils/auth/firebaseAdmin';
 
 export async function getServerSideProps(context) {
   const { piggybankName } = context.params;
-  let piggybankDbData = {};
+  let piggybankData = {};
   try {
     const piggybank = await db()
       .collection('piggybanks')
       .doc(piggybankName)
       .get();
     if (piggybank.exists) {
-      piggybankDbData = piggybank.data();
+      piggybankData = piggybank.data();
     }
   } catch (error) {
     console.log('error in getServerSideProps', error);
@@ -20,7 +20,7 @@ export async function getServerSideProps(context) {
   }
   return {
     props: {
-      piggybankDbData,
+      piggybankData,
     },
   };
 }
