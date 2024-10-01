@@ -21,6 +21,7 @@ import {
     useTheme,
 } from "@chakra-ui/core";
 import { useForm, useFieldArray } from "react-hook-form";
+import axios from 'axios';
 import { piggybankPathRegex } from '../../../src/settings'; // use for validation
 import { PublicPiggybankData } from '../PublicPiggybankDataContext';
 import { publicPiggybankThemeColorOptions as themeColorOptions } from '../../theme';
@@ -29,7 +30,7 @@ import PaymentMethodsInput from './PaymentMethodsInput';
 import EditUrlInput from './EditUrlInput';
 import { convertPaymentMethodsFieldArrayToDbMap } from './util';
 import { db } from '../../../utils/client/db';
-import axios from 'axios';
+import { useUser } from '../../../utils/auth/useUser';
 
 function convertPaymentMethodsDataToFieldArray(paymentMethods = {}) {
     return Object.entries(paymentMethods)
@@ -42,13 +43,15 @@ function convertPaymentMethodsDataToFieldArray(paymentMethods = {}) {
 
 const EditPiggybankModal = (props) => {
     const { isOpen, onClose } = props;
+    const [isSubmitting, setIsSubmitting] = useState();
     const { colors } = useTheme();
+    const { token } = useUser();
     const themeColorOptionsWithHexValues = themeColorOptions.map(name => ([name, colors[name]['500']]));
     const { push: routerPush, query: { piggybankName: initialPiggybankId } } = useRouter();
     const { piggybankDbData, refreshPiggybankDbData } = useContext(PublicPiggybankData);
     console.log('DB PIGGYBANK DATA', piggybankDbData);
     const initialPaymentMethodsDataFieldArray = convertPaymentMethodsDataToFieldArray(piggybankDbData.paymentMethods);
-    const { register, handleSubmit, setValue, getValues, watch, control, errors, unregister } = useForm({
+    const { register, handleSubmit, setValue, watch, control, errors, unregister } = useForm({
         defaultValues: {
             piggybankId: initialPiggybankId,
             accentColor: piggybankDbData.accentColor ?? 'orange',
@@ -67,28 +70,36 @@ const EditPiggybankModal = (props) => {
     const isUrlUnchanged = initialPiggybankId === piggybankId;
     const onSubmit = async (formData) => {
         try {
+            setIsSubmitting(true);
             console.log('raw form data', formData);
             const dataToSubmit = {
                 ...formData,
-                paymentMethods: convertPaymentMethodsFieldArrayToDbMap(formData.paymentMethods),
+                paymentMethods: convertPaymentMethodsFieldArrayToDbMap(formData.paymentMethods ?? []),
                 owner_uid: piggybankDbData.owner_uid,
             };
             console.log('dataToSubmit', dataToSubmit);
             if (isUrlUnchanged) {
-                // if proposed coindrop url is current, just update data (OVERWRITE ALL DATA?)
-                await db.collection('piggybanks').doc(formData.piggybankId).set(dataToSubmit); // TODO: does this return the document? if so, instead of routerPush'ing below, can manually set the data without refetching from db.
+                await db.collection('piggybanks').doc(initialPiggybankId).set(dataToSubmit); // TODO: does this return the document? if so, instead of routerPush'ing below, can manually set the data without refetching from db.
+                await refreshPiggybankDbData(initialPiggybankId);
             } else {
-                // if proposed coindrop url is different, create a new document and delete the old one. then router.push to the new url.
-                await db.collection('piggybanks').doc(formData.piggybankId).delete();
-                const response = await axios.post('/api/createPiggybank', {
-                    piggybankName: formData.piggybankId, // TODO: rename this to piggybankId
-                    piggybankData: dataToSubmit,
-                });
+                await db.collection('piggybanks').doc(initialPiggybankId).delete();
+                const response = await axios.post(
+                    '/api/createPiggybank',
+                    {
+                        piggybankName: formData.piggybankId, // TODO: rename this to piggybankId
+                        piggybankData: dataToSubmit,
+                    },
+                    {
+                        token,
+                    },
+                );
+                console.log('response.data', response.data);
+                routerPush(`/${formData.piggybankId}`);
             }
             onClose();
-            refreshPiggybankDbData(initialPiggybankId);
-            routerPush(`/${formData.piggybankId}`); // refreshes data from db
         } catch (error) {
+            setIsSubmitting(false);
+            console.log(error);
             // TODO: set error
             throw new Error(error);
         }
@@ -100,11 +111,6 @@ const EditPiggybankModal = (props) => {
     useEffect(() => {
         register("accentColor");
     }, [register]);
-    useEffect(() => {
-        if (!isOpen) {
-            unregister(paymentMethodsFieldArrayName);
-        }
-    }, [isOpen]);
     const formControlTopMargin = 2;
     return (
         <Modal
@@ -234,6 +240,8 @@ const EditPiggybankModal = (props) => {
                             variantColor="green"
                             mx={1}
                             type="submit"
+                            isLoading={isSubmitting}
+                            loadingText="Submitting"
                         >
                             Submit
                         </Button>
