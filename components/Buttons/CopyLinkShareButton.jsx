@@ -9,7 +9,7 @@ const CopyLinkShareButton = (props) => {
             leftIcon={hasCopied ? "check" : "link"}
             onClick={onCopy}
         >
-            {hasCopied ? "Copied Link" : "Copy Link"}
+            {hasCopied ? "Copied" : "Copy Link"}
         </Button>
     );
 };
