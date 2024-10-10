@@ -41,7 +41,7 @@ function PiggybankListItem({ id }) {
                                 align="center"
                                 mx={4}
                             >
-                                <Heading fontSize="xl" wordBreak="break-word">
+                                <Heading fontSize="xl">
                                     coindrop.to/
                                     {id}
                                 </Heading>
