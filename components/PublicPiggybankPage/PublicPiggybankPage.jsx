@@ -7,18 +7,21 @@ import { css, jsx } from '@emotion/react';
 import { useRouter } from 'next/router';
 import { NextSeo } from 'next-seo';
 import { useUser } from '../../utils/auth/useUser';
+import { Avatar } from './avatar/Avatar';
 import PaymentMethodButton from './PaymentMethodButton';
 import ManagePiggybankBar from './ManagePiggybankBar/ManagePiggybankBar';
 import PoweredByCoindropLink from './PoweredByCoindropLink';
 import PublicPiggybankDataProvider from './PublicPiggybankDataContext';
 import { sortArrayByEntriesKeyAlphabetical } from './util';
 import { db } from '../../utils/client/db';
+import { AvatarContextProvider } from './context/avatar-context';
 
 const PublicPiggybankPage = (props) => {
     // TODO: useSwr to refresh piggybankDbData after initial load
     // TODO: Split out Edit modal into new page?
     // TODO: alphabetize list of payment methods
     const { initialPiggybankDbData } = props;
+    console.log('initialPiggybankDbData', initialPiggybankDbData)
     const { query: { piggybankName }} = useRouter();
     const [piggybankDbData, setPiggybankDbData] = useState(initialPiggybankDbData);
     async function refreshPiggybankDbData(piggybankId) {
@@ -90,9 +93,12 @@ const PublicPiggybankPage = (props) => {
         <PublicPiggybankDataProvider
             data={{
                 piggybankDbData,
+                setPiggybankDbData,
                 refreshPiggybankDbData,
             }}
         >
+        <AvatarContextProvider>
+
             <Box
                 maxW="1280px"
                 mx="auto"
@@ -118,6 +124,7 @@ const PublicPiggybankPage = (props) => {
                             my={2}
                             mx={3}
                         >
+                            <Avatar />
                             <Heading textAlign="center">
                                 Choose a payment method to
                                 {` ${verb} `}
@@ -164,6 +171,7 @@ const PublicPiggybankPage = (props) => {
                     </Heading>
                 )}
             </Box>
+        </AvatarContextProvider>
         </PublicPiggybankDataProvider>
         </>
     );
